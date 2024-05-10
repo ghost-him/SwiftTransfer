@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package Transfer;
+
+message FileBlock {
+    uint32 transferID = 1;
+    uint64 offset = 2;
+    uint32 fileSize = 3;
+    bytes fileBlock = 4;
+}
+
+message FileInfo {
+    uint32 fileID = 1;
+    uint64 fileSize = 2;
+    bytes fileName = 3;
+    bytes digest = 4;
+}
+
+message StartTransfer {
+    uint32 clientID = 1;
+    uint32 transferID = 2;
+    FileInfo fileInfo = 3;
+}
+
+message EndTransfer {
+    uint32 transferID = 1;
+}
+
+message RequestFileBlockList{
+    uint32 transferID = 1;
+    // 返回-1表示当前的文件完整
+    repeated uint64 offset = 2;
+}
+
+message FileDigest {
+    uint32 transferID = 1;
+    uint32 fileID = 2;
+    bytes digest = 3;
+    repeated bytes partDigest = 4;
+}
+
+message GetFileListPage {
+    uint32 page = 1;
+}
+
+message FileList {
+    uint32 page = 1;
+    repeated FileInfo fileInfos = 2;
+    uint32 totalPage = 3;
+}
+
+message Configuration {
+    uint32 fileBlockSize = 1;
+    uint32 clientID = 2;
+}
+// 用于触发一个空消息
+message Placeholder {
+}
+
+message UniqueID {
+    uint32 uniqueID = 1;
+}

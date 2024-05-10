@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package Transfer;
+
+import "entity.proto";
+
+service StreamService {
+    // 获得服务器配置
+    rpc getConfiguration(Placeholder) returns (Configuration) {}
+    // 从服务器获得当前的文件列表
+    rpc getFileList(GetFileListPage) returns (FileList) {}
+    // 获得一个唯一id
+    rpc getUniqueID(Placeholder) returns (UniqueID) {}
+    // 心跳检测
+    rpc HeartbeatSignal(Placeholder) returns (Placeholder) {}
+
+    /*上传文件相关*/
+
+    // 上传文件的信息
+    rpc sendUploadFileInfo(StartTransfer) returns (Placeholder) {}
+    // 发送文件的内容
+    rpc sendUploadFileBlock(stream FileBlock) returns (Placeholder) {}
+    // 效验文件
+    rpc sendFileVerification(FileDigest) returns (RequestFileBlockList) {}
+    // 结束文件的上传
+    rpc endSendUploadFile(EndTransfer) returns (Placeholder) {}
+
+
+
+}
