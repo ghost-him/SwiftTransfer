@@ -16,14 +16,11 @@ message FileInfo {
     bytes digest = 4;
 }
 
+
 message StartTransfer {
     uint32 clientID = 1;
     uint32 transferID = 2;
     FileInfo fileInfo = 3;
-}
-
-message EndTransfer {
-    uint32 transferID = 1;
 }
 
 message RequestFileBlockList{
@@ -39,7 +36,7 @@ message FileDigest {
     repeated bytes partDigest = 4;
 }
 
-message GetFileListPage {
+message PageIndex {
     uint32 page = 1;
 }
 
@@ -59,4 +56,14 @@ message Placeholder {
 
 message UniqueID {
     uint32 uniqueID = 1;
+}
+
+/*下载相关*/
+
+message FileID {
+    uint32 fileID = 1;
+}
+
+message TransferID {
+    uint32 transferID = 1;
 }

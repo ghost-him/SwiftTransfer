@@ -27,13 +27,13 @@ void StreamServiceClient::getConfiguration() {
 }
 
 FileList StreamServiceClient::getFileList(uint32_t page) {
-    GetFileListPage getFileListPage;
+    PageIndex pageIndex;
     FileList reply;
     ClientContext context;
 
-    getFileListPage.set_page(page);
+    pageIndex.set_page(page);
 
-    Status status = stub_->getFileList(&context, getFileListPage, &reply);
+    Status status = stub_->getFileList(&context, pageIndex, &reply);
     if (status.ok()) {
         // 获取文件列表成功
     } else {
@@ -196,8 +196,6 @@ bool StreamServiceClient::sendUploadFileBlock(uint32_t transferID) {
         thread->join();
     }
 
-
-
     writer->WritesDone();
     Status status = writer->Finish();
     if (status.ok()) {
@@ -247,11 +245,11 @@ bool StreamServiceClient::endSendUploadFile(uint32_t transferID) {
     database::getInstance().endTransfer(transferID);
 
 
-    Transfer::EndTransfer endTransfer;
-    endTransfer.set_transferid(transferID);
+    Transfer::TransferID transferId;
+    transferId.set_transferid(transferID);
     Placeholder placeholder;
     ClientContext context;
-    Status status = stub_->endSendUploadFile(&context, endTransfer, &placeholder);
+    Status status = stub_->endSendUploadFile(&context, transferId, &placeholder);
     if (status.ok()) {
         return true;
     }
@@ -271,4 +269,52 @@ uint32_t StreamServiceClient::getNextBlockIndex(std::shared_ptr<SendFileList> pt
 void StreamServiceClient::connect(const string &address) {
     channel_ = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
     stub_ = StreamService::NewStub(channel_);
+}
+
+uint32_t StreamServiceClient::startDownloadServerFile(uint32_t fileIndex) {
+    FileManager& fileManager = FileManager::getInstance();
+    database& db = database::getInstance();
+    FileInfo fileInfo = std::move(fileManager.getServerFileInfo(fileIndex));
+    AppConfig& appConfig = AppConfig::getInstance();
+    ThreadPool& pool = ThreadPool::getInstance();
+    uint32_t fileBlockSize = std::stoi(appConfig.get("fileBlockSize"));
+
+    // 获得传输id
+    FileID fileID;
+    fileID.set_fileid(fileInfo.fileid());
+    TransferID transferID;
+    ClientContext context;
+
+    Status status = stub_->getDownloadTransferID(&context, fileID, &transferID);
+
+    if (!status.ok()) {
+        return -1;
+    }
+    // 初始化数据库
+    db.createTransfer(transferID.transferid(), fileInfo);
+    // 初始化文件管理器
+    std::string filePath = fileDirectoryPath + fileInfo.filename();
+    std::wstring wfilePath = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}.from_bytes(filePath);
+    fileManager.startWriteFile(wfilePath, transferID.transferid());
+    // 文件摘要管理
+    uint32_t fileBlockNumber = fileInfo.filesize() / fileBlockSize + 1;
+    fileManager.createFileDigestList(fileInfo.fileid(), fileBlockNumber);
+    pool.commit(std::bind_front(&FileManager::updateFileDigestThread, &FileManager::getInstance()), fileInfo.fileid());
+
+    return transferID.transferid();
+}
+
+bool StreamServiceClient::startDownloadFile(uint32_t transferID) {
+    return false;
+}
+
+void StreamServiceClient::endDownloadFile(uint32_t transferID) {
+
+}
+
+void StreamServiceClient::initFileDirectory() {
+    if (std::filesystem::exists(fileDirectoryPath)) {
+        return ;
+    }
+    std::filesystem::create_directories(fileDirectoryPath);
 }

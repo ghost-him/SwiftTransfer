@@ -26,8 +26,8 @@ StreamServiceImpl::getConfiguration(ServerContext *context, const Placeholder *p
     return Status::OK ;
 }
 
-Status StreamServiceImpl::getFileList(ServerContext *context, const GetFileListPage *getFileListPage, FileList *writer) {
-    uint32_t page = getFileListPage->page();
+Status StreamServiceImpl::getFileList(ServerContext *context, const PageIndex *pageIndex, FileList *writer) {
+    uint32_t page = pageIndex->page();
     database& db = database::getInstance();
 
     Transfer::FileList fileList = std::move(db.queryLatestFile(page));
@@ -115,13 +115,13 @@ Status StreamServiceImpl::sendFileVerification(ServerContext *context, const Fil
 }
 
 Status
-StreamServiceImpl::endSendUploadFile(ServerContext *context, const EndTransfer *endTransfer, Placeholder *placeholder) {
+StreamServiceImpl::endSendUploadFile(ServerContext *context, const TransferID *transferId, Placeholder *placeholder) {
     // 表示当前的文件效验完成
     database& db = database::getInstance();
     AppConfig& appConfig = AppConfig::getInstance();
     FileManager& fileManager = FileManager::getInstance();
 
-    uint32_t transferID = endTransfer->transferid();
+    uint32_t transferID = transferId->transferid();
     FileInfo fileInfo = std::move(db.queryTransfer(transferID));
     FileDigest fileDigest = std::move(fileManager.getFileDigest(fileInfo.fileid()));
 

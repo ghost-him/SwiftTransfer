@@ -48,7 +48,10 @@ public:
      */
     void downloadFile(uint32_t fileID);
 
+    void initFileDirectory();
+
 private:
+    const std::string fileDirectoryPath = "./files/";
     StreamServiceClient() = default;
     struct SendFileList {
         std::queue<uint32_t> FileBlockToSend;
@@ -62,7 +65,7 @@ private:
     // 上传文件
     bool sendUploadFileBlock(uint32_t transferID);
     // 发送效验文件
-    bool sendFileVerification(uint32_t ransferID);
+    bool sendFileVerification(uint32_t transferID);
     // 结束一个文件的上传
     bool endSendUploadFile(uint32_t transferID);
     // 获取下一个应该发送的文件块的编号
@@ -74,6 +77,13 @@ private:
     /*
      * 下载文件相关
      */
+    // 开始获得要下载文件的信息
+    uint32_t startDownloadServerFile(uint32_t fileIndex);
+    // 下载文件
+    bool startDownloadFile(uint32_t transferID);
+    // 结束传输
+    void endDownloadFile(uint32_t transferID);
+
 
     std::shared_ptr<grpc::Channel> channel_;
     std::unique_ptr<StreamService::Stub> stub_;

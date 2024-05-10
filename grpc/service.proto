@@ -8,7 +8,7 @@ service StreamService {
     // 获得服务器配置
     rpc getConfiguration(Placeholder) returns (Configuration) {}
     // 从服务器获得当前的文件列表
-    rpc getFileList(GetFileListPage) returns (FileList) {}
+    rpc getFileList(PageIndex) returns (FileList) {}
     // 获得一个唯一id
     rpc getUniqueID(Placeholder) returns (UniqueID) {}
     // 心跳检测
@@ -20,11 +20,20 @@ service StreamService {
     rpc sendUploadFileInfo(StartTransfer) returns (Placeholder) {}
     // 发送文件的内容
     rpc sendUploadFileBlock(stream FileBlock) returns (Placeholder) {}
+    // 结束文件的上传
+    rpc endSendUploadFile(TransferID) returns (Placeholder) {}
+
+    /*下载文件相关*/
+
+    // 获取文件的信息: 对于服务器来说，clientID 为空，主要传输transferID
+    rpc getDownloadTransferID(FileID) returns (TransferID) {}
+    // 下载文件
+    rpc startDownloadFile(TransferID) returns (stream FileBlock) {}
+    // 结束传输
+    rpc endDownloadFile(TransferID) returns (Placeholder) {}
+
     // 效验文件
     rpc sendFileVerification(FileDigest) returns (RequestFileBlockList) {}
-    // 结束文件的上传
-    rpc endSendUploadFile(EndTransfer) returns (Placeholder) {}
-
 
 
 }

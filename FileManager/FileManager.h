@@ -77,6 +77,8 @@ public:
     bool isValid(const std::filesystem::path& path);
     // 结束模块
     void close();
+    // fileIndex = [1, 9]
+    Transfer::FileInfo getServerFileInfo(uint32_t fileIndex);
 
 private:
     FileManager();
@@ -88,7 +90,7 @@ private:
     std::queue<Transfer::FileBlock> writeQueue;
     std::atomic<bool> stop;
 
-    struct FileDigest{
+    struct FileDigestStruct{
         std::mutex lock;
         std::shared_ptr<std::condition_variable> cv;
         std::atomic<uint64_t> targetBlockIndex;
@@ -99,7 +101,9 @@ private:
     };
 
     // 文件摘要处理
-    std::unordered_map<uint32_t, std::shared_ptr<FileDigest>> fileDigestMap;
+    std::unordered_map<uint32_t, std::shared_ptr<FileDigestStruct>> fileDigestMap;
+    // 存储服务器的文件列表
+    Transfer::FileList fileList;
 };
 
 
