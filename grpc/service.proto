@@ -22,18 +22,21 @@ service StreamService {
     rpc sendUploadFileBlock(stream FileBlock) returns (Placeholder) {}
     // 结束文件的上传
     rpc endSendUploadFile(TransferID) returns (Placeholder) {}
+    // 效验文件
+    rpc transferUploadFileSHA(FileDigest) returns (RequestFileBlockList) {}
+
 
     /*下载文件相关*/
 
     // 获取文件的信息: 对于服务器来说，clientID 为空，主要传输transferID
     rpc getDownloadTransferID(FileID) returns (TransferID) {}
     // 下载文件
-    rpc startDownloadFile(TransferID) returns (stream FileBlock) {}
+    rpc transferDownloadFile(TransferID) returns (stream FileBlock) {}
+    // 校验文件
+    rpc transferDownloadFileSHA(FileDigest) returns (stream FileBlock) {}
     // 结束传输
     rpc endDownloadFile(TransferID) returns (Placeholder) {}
 
-    // 效验文件
-    rpc sendFileVerification(FileDigest) returns (RequestFileBlockList) {}
 
 
 }

@@ -50,15 +50,15 @@ public:
     // 在写入文件的过程中记录文件的摘要
 
     // 根据文件id新建一个摘要列表
-    void createFileDigestList(uint32_t fileID, uint32_t blockNumber);
+    void createFileDigestList(uint32_t transferID, uint32_t blockNumber);
     // 更新文件完整性列表
-    void updateFileDigestList(uint32_t fileID, uint32_t blockIndex, std::shared_ptr<unsigned char[]> data, uint64_t dataSize);
+    void updateFileDigestList(uint32_t transferID, uint32_t blockIndex, std::shared_ptr<unsigned char[]> data, uint64_t dataSize);
     // 判断文件是否完整
-    std::vector<uint32_t> isFileComplete(uint32_t fileID, const Transfer::FileDigest& fileDigest);
+    std::vector<uint32_t> isFileComplete(uint32_t transferID, const Transfer::FileDigest& fileDigest);
     // 删除文件
-    void deleteFileDigestList(uint32_t fileID);
+    void deleteFileDigestList(uint32_t transferID);
     // 获取文件的摘要
-    Transfer::FileDigest getFileDigest(uint32_t fileID);
+    Transfer::FileDigest getFileDigest(uint32_t transferID);
 
 
 
@@ -72,7 +72,7 @@ public:
     // 更新维护的文件列表
     void updateFileList(const Transfer::FileList& fileList);
     // 更新文件的摘要
-    void updateFileDigestThread(uint32_t fileID);
+    void updateFileDigestThread(uint32_t transferID);
     // 判断路径的指向是否是一个普通文件
     bool isValid(const std::filesystem::path& path);
     // 结束模块

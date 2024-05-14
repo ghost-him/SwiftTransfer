@@ -18,38 +18,38 @@ std::string CipherUtils::getStringSha256(void *data, uint64_t dataSize) {
     return hashValue;
 }
 
-void CipherUtils::createFileSha256(uint32_t fileID) {
-    if (sha256Map.contains(fileID)) {
-        throw std::runtime_error("duplicate fileID: " + std::to_string(fileID));
+void CipherUtils::createFileSha256(uint32_t id) {
+    if (sha256Map.contains(id)) {
+        throw std::runtime_error("duplicate id: " + std::to_string(id));
     }
-    sha256Map[fileID] = {};
+    sha256Map[id] = {};
 }
 
-void CipherUtils::updateFileSha256(uint32_t fileID, void *data, uint64_t dataSize) {
-    CryptoPP::SHA256& sha256 = sha256Map[fileID];
+void CipherUtils::updateFileSha256(uint32_t id, void *data, uint64_t dataSize) {
+    CryptoPP::SHA256& sha256 = sha256Map[id];
     sha256.Update((const CryptoPP::byte*)data, dataSize);
 }
 
-std::string CipherUtils::getFileSha256(uint32_t fileID) {
-    if (fileSha256Store.contains(fileID))
-        return fileSha256Store[fileID];
+std::string CipherUtils::getFileSha256(uint32_t id) {
+    if (fileSha256Store.contains(id))
+        return fileSha256Store[id];
     unsigned char buffer[CryptoPP::SHA256::DIGESTSIZE];
-    CryptoPP::SHA256& sha256 = sha256Map[fileID];
+    CryptoPP::SHA256& sha256 = sha256Map[id];
     sha256.Final(buffer);
     std::string result;
     CryptoPP::StringSource(buffer, sha256.DigestSize(), true, new CryptoPP::HexEncoder(new CryptoPP::StringSink(result)));
-    fileSha256Store[fileID] = result;
+    fileSha256Store[id] = result;
     return result;
 }
 
-void CipherUtils::deleteFileSha256(uint32_t fileID) {
-    if (sha256Map.contains(fileID)) {
-        sha256Map.erase(fileID);
+void CipherUtils::deleteFileSha256(uint32_t id) {
+    if (sha256Map.contains(id)) {
+        sha256Map.erase(id);
     } else {
-        throw std::runtime_error("invalid fileID: " + std::to_string(fileID));
+        throw std::runtime_error("invalid id: " + std::to_string(id));
     }
-    if (fileSha256Store.contains(fileID)) {
-        fileSha256Store.erase(fileID);
+    if (fileSha256Store.contains(id)) {
+        fileSha256Store.erase(id);
     }
 }
 

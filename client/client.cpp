@@ -90,8 +90,8 @@ void StreamServiceClient::uploadFile(const std::filesystem::path &path) {
     // 根据文件的大小，初始化要发送的文件块
     uint32_t totalFileBlockSize = (fileInfo.filesize() / fileBlockSize) + 1;
 
-    fileManager.createFileDigestList(fileInfo.fileid(), totalFileBlockSize);
-    ThreadPool::getInstance().commit(std::bind_front(&FileManager::updateFileDigestThread, &FileManager::getInstance()), fileInfo.fileid());
+    fileManager.createFileDigestList(transferID, totalFileBlockSize);
+    ThreadPool::getInstance().commit(std::bind_front(&FileManager::updateFileDigestThread, &FileManager::getInstance()), transferID);
 
     for (int i = 0; i < totalFileBlockSize; i ++) {
         sendFileList->FileBlockToSend.push(i);
@@ -99,7 +99,7 @@ void StreamServiceClient::uploadFile(const std::filesystem::path &path) {
 
     while(true) {
         if (!sendUploadFileBlock(transferID)) break;
-        if (!sendFileVerification(transferID)) break;
+        if (!transferUploadFileSHA(transferID)) break;
 
         // 检测当前是否还有没发送完的
         if (isTransferEnd(sendFileList)) {
@@ -109,12 +109,37 @@ void StreamServiceClient::uploadFile(const std::filesystem::path &path) {
 
     endSendUploadFile(transferID);
 
-    fileManager.deleteFileDigestList(fileInfo.fileid());
+    fileManager.deleteFileDigestList(transferID);
     sendFileListMap.erase(transferID);
 }
 
 void StreamServiceClient::downloadFile(uint32_t fileID) {
 
+    uint32_t transferID = startDownloadServerFile(fileID);
+
+    if (transferID == -1) {
+        return;
+    }
+
+    if (!transferDownloadFile(transferID)) {
+        return;
+    }
+
+    bool end = false;
+    while(!end) {
+        int ret = transferDownloadFileSHA(transferID);
+        switch(ret) {
+            case -1:
+                return;
+            case 0:
+                end = true;
+                break;
+            default:
+                end = false;
+                break;
+        }
+    }
+    endDownloadFile(transferID);
 }
 
 uint32_t StreamServiceClient::sendUploadFileInfo(const std::filesystem::path& path) {
@@ -168,7 +193,7 @@ bool StreamServiceClient::sendUploadFileBlock(uint32_t transferID) {
     std::unique_ptr<ClientWriter<FileBlock>> writer(stub_->sendUploadFileBlock(&context, &placeholder));
     std::shared_ptr<std::thread> threads[Default_Send_Thread];
 
-    std::mutex serverWriteLock;
+    std::mutex clientWriteLock;
     for (int i = 0; i < Default_Send_Thread; i ++) {
         std::shared_ptr<std::thread> ptr = std::make_shared<std::thread>([&]{
             while(true) {
@@ -181,8 +206,8 @@ bool StreamServiceClient::sendUploadFileBlock(uint32_t transferID) {
                 auto ret = fileManager.readFileViaID(transferID, offset, fileBlockSize);
                 Transfer::FileBlock fileBlock = ret.first;
                  // 计算一下哈希值
-                fileManager.updateFileDigestList(fileInfo.fileid(), fileBlockIndex, ret.second, fileBlock.filesize());
-                std::unique_lock<std::mutex> guard(serverWriteLock);
+                fileManager.updateFileDigestList(transferID, fileBlockIndex, ret.second, fileBlock.filesize());
+                std::unique_lock<std::mutex> guard(clientWriteLock);
                 if (!writer->Write(fileBlock)) {
                     // 传输失败
                     break;
@@ -204,18 +229,18 @@ bool StreamServiceClient::sendUploadFileBlock(uint32_t transferID) {
     return false;
 }
 
-bool StreamServiceClient::sendFileVerification(uint32_t transferID) {
+bool StreamServiceClient::transferUploadFileSHA(uint32_t transferID) {
     FileManager& fileManager = FileManager::getInstance();
     AppConfig& appConfig = AppConfig::getInstance();
     database& db = database::getInstance();
     FileInfo fileInfo = db.queryTransfer(transferID);
 
-    Transfer::FileDigest fileDigest = std::move(fileManager.getFileDigest(fileInfo.fileid()));
+    Transfer::FileDigest fileDigest = std::move(fileManager.getFileDigest(transferID));
     std::cerr << fileDigest.digest() << std::endl;
     fileDigest.set_transferid(transferID);
     ClientContext context;
     RequestFileBlockList reply;
-    Status status = stub_->sendFileVerification(&context, fileDigest, & reply);
+    Status status = stub_->transferUploadFileSHA(&context, fileDigest, & reply);
     uint32_t fileBlockSize = std::stoi(appConfig.get("fileBlockSize"));
     if (status.ok()) {
         std::shared_ptr<SendFileList> ptr = sendFileListMap[transferID];
@@ -298,17 +323,55 @@ uint32_t StreamServiceClient::startDownloadServerFile(uint32_t fileIndex) {
     fileManager.startWriteFile(wfilePath, transferID.transferid());
     // 文件摘要管理
     uint32_t fileBlockNumber = fileInfo.filesize() / fileBlockSize + 1;
-    fileManager.createFileDigestList(fileInfo.fileid(), fileBlockNumber);
-    pool.commit(std::bind_front(&FileManager::updateFileDigestThread, &FileManager::getInstance()), fileInfo.fileid());
+    fileManager.createFileDigestList(transferID.transferid(), fileBlockNumber);
+    pool.commit(std::bind_front(&FileManager::updateFileDigestThread, &FileManager::getInstance()), transferID.transferid());
 
     return transferID.transferid();
 }
 
-bool StreamServiceClient::startDownloadFile(uint32_t transferID) {
-    return false;
+bool StreamServiceClient::transferDownloadFile(uint32_t transferID) {
+    FileManager& fileManager = FileManager::getInstance();
+    database& db = database::getInstance();
+    FileInfo fileInfo = std::move(db.queryTransfer(transferID));
+    AppConfig& appConfig = AppConfig::getInstance();
+    uint32_t fileBlockSize = std::stoi(appConfig.get("fileBlockSize"));
+
+    ClientContext context;
+    TransferID id;
+    id.set_transferid(transferID);
+    std::unique_ptr<ClientReader<FileBlock>> reader(stub_->transferDownloadFile(&context, id));
+
+    FileBlock fileBlock;
+    while(reader->Read(& fileBlock)) {
+        // 更新文件摘要信息
+        std::shared_ptr<unsigned char[]> data(new unsigned char[fileBlock.filesize()]);
+        memcpy(data.get(), fileBlock.fileblock().data(), fileBlock.filesize());
+        fileManager.updateFileDigestList(transferID, fileBlock.offset() / fileBlockSize, data, fileBlock.filesize());
+        // 写入磁盘
+        fileManager.writeFileViaID(fileBlock);
+    }
+
+    Status status = reader->Finish();
+    if (status.ok()) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void StreamServiceClient::endDownloadFile(uint32_t transferID) {
+    // 表示当前的文件效验完成
+    database& db = database::getInstance();
+    AppConfig& appConfig = AppConfig::getInstance();
+    FileManager& fileManager = FileManager::getInstance();
+
+    FileInfo fileInfo = std::move(db.queryTransfer(transferID));
+    FileDigest fileDigest = std::move(fileManager.getFileDigest(transferID));
+
+
+    fileManager.endWriteFile(transferID);
+    fileManager.deleteFileDigestList(transferID);
+    db.endTransfer(transferID);
 
 }
 
@@ -317,4 +380,42 @@ void StreamServiceClient::initFileDirectory() {
         return ;
     }
     std::filesystem::create_directories(fileDirectoryPath);
+}
+
+int StreamServiceClient::transferDownloadFileSHA(uint32_t transferID) {
+    // 如果都已经成功传送了，则返回0，否则返回1，有异常返回-1;
+    FileManager& fileManager = FileManager::getInstance();
+    AppConfig& appConfig = AppConfig::getInstance();
+    database& db = database::getInstance();
+    FileInfo fileInfo = db.queryTransfer(transferID);
+    uint32_t fileBlockSize = std::stoi(appConfig.get("fileBlockSize"));
+
+    Transfer::FileDigest fileDigest = std::move(fileManager.getFileDigest(transferID));
+    std::cerr << fileDigest.digest() << std::endl;
+    fileDigest.set_transferid(transferID);
+    ClientContext context;
+    std::unique_ptr<ClientReader<FileBlock>> reader(stub_->transferDownloadFileSHA(&context, fileDigest));
+    Transfer::FileBlock fileBlock;
+
+    bool end = true;
+    while(reader->Read(&fileBlock)) {
+        end = false;
+        // 更新文件摘要信息
+        std::shared_ptr<unsigned char[]> data(new unsigned char[fileBlock.filesize()]);
+        memcpy(data.get(), fileBlock.fileblock().data(), fileBlock.filesize());
+        fileManager.updateFileDigestList(transferID, fileBlock.offset() / fileBlockSize, data, fileBlock.filesize());
+        // 写入磁盘
+        fileManager.writeFileViaID(fileBlock);
+    }
+
+    Status status = reader->Finish();
+    if (status.ok()) {
+        if (end) {
+            return 0;
+        } else {
+            return 1;
+        }
+    } else {
+        return -1;
+    }
 }

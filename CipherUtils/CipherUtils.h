@@ -24,13 +24,13 @@ public:
 
     std::string getStringSha256(void * data, uint64_t dataSize);
 
-    void createFileSha256(uint32_t fileID);
+    void createFileSha256(uint32_t id);
 
-    void updateFileSha256(uint32_t fileID, void * data, uint64_t dataSize);
+    void updateFileSha256(uint32_t id, void * data, uint64_t dataSize);
 
-    std::string getFileSha256(uint32_t fileID);
+    std::string getFileSha256(uint32_t id);
 
-    void deleteFileSha256(uint32_t fileID);
+    void deleteFileSha256(uint32_t id);
 
 
 private:

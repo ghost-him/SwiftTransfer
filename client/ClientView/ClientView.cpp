@@ -15,12 +15,14 @@ bool ClientView::printMainPage(uint32_t pageIndex) {
     printTitle();
 
     // 计算每一列的实际宽度,根据窗口大小动态调整
+    size_t fileIndexWidth = 4;
     size_t fileNameWidth = 20;
     size_t fileSizeWidth = 15;
     size_t sha256Width = 40;
 
     // 输出表格
-    std::wcout << std::left << std::setw(fileNameWidth) << "File Name"
+    std::wcout << std::left << std::setw(fileIndexWidth) << "File Index"
+              <<std::setw(fileNameWidth) << "File Name"
               << std::setw(fileSizeWidth) << "File Size(B)"
               << std::setw(sha256Width) << "SHA256"
               << std::endl;
@@ -37,9 +39,18 @@ bool ClientView::printMainPage(uint32_t pageIndex) {
             const uint32_t fileSize = fileInfos.at(i).filesize();
             const std::string& sha256 = fileInfos.at(i).digest();
             const std::wstring wsha256 = converter.from_bytes(sha256);
-            std::wcout << std::left << std::setw(fileNameWidth) << wfileName
-                       << std::setw(fileSizeWidth) << fileSize
-                       << std::setw(sha256Width) << wsha256;
+            if (!wfileName.empty()) {
+                std::wcout << std::left << std::setw(fileIndexWidth) << i
+                           << std::setw(fileNameWidth) << wfileName
+                           << std::setw(fileSizeWidth) << fileSize
+                           << std::setw(sha256Width) << wsha256;
+            } else {
+                std::wcout << std::left << std::setw(fileIndexWidth) << '-'
+                           << std::setw(fileNameWidth) << '-'
+                           << std::setw(fileSizeWidth) << '-'
+                           << std::setw(sha256Width) << '-';
+            }
+
         }
         std::wcout << "\n";
     }
@@ -54,9 +65,9 @@ bool ClientView::printMainPage(uint32_t pageIndex) {
     } else if (str == L"q") {
         return false;
     } else if (str == L"l") {
-        printMainPage(page + 1);
+        return printMainPage(page + 1);
     } else if (str == L"r") {
-        printMainPage((page - 1 > 0? page - 1: page));
+        return printMainPage((page - 1 > 0? page - 1: page));
     } else {
         std::wcout << L"无效命令" << std::endl;
     }
@@ -139,9 +150,23 @@ void ClientView::printInitPage() {
     std::wcout << L"程序初始化" << std::endl;
     client.getConfiguration();
     std::wcout << L"初始化成功，跳转页面" << std::endl;
-    printMainPage(1);
 }
 
 void ClientView::printDownloadPage() {
-
+    std::wcout << L"请输入要下载的文件编号" << std::endl;
+    std::wstring widx;
+    getline(std::wcin, widx);
+    uint32_t idx = std::stoi(widx);
+    if (idx >= 9) {
+        std::wcout << L"无效编号" << std::endl;
+        return ;
+    }
+    // 判断该idx是否正确
+    FileInfo fileInfo = std::move(FileManager::getInstance().getServerFileInfo(idx));
+    if (fileInfo.filename().empty()) {
+        std::wcout << L"无效编号" << std::endl;
+        return ;
+    }
+    std::wcout << "开始下载文件" << std::endl;
+    StreamServiceClient::getInstance().downloadFile(idx);
 }

@@ -93,7 +93,7 @@ Transfer::FileInfo database::queryFile(uint32_t fileID) {
         }
 
         result.set_fileid(ans.get<int32_t>("fileID"));
-        result.set_filesize(ans.get<int64_t>("fileSize"));
+        result.set_filesize(ans.get<sqlite_api::sqlite3_int64>("fileSize"));
         result.set_filename(ans.get<std::string>("fileName"));
         result.set_digest(ans.get<std::string>("digest"));
     } catch (const soci::soci_error& e) {
@@ -148,15 +148,11 @@ Transfer::FileInfo database::queryTransfer(uint32_t transferID) {
             std::cerr << "No data found." << std::endl;
             return result;
         }
-        int32_t fileID = ans.get<int32_t>("fileID");
-        sqlite_api::sqlite3_int64 fileSize = ans.get<sqlite_api::sqlite3_int64>("fileSize");
-        std::string fileName = ans.get<std::string>("fileName");
-        std::string digest = ans.get<std::string>("digest");
 
-        result.set_fileid(fileID);
-        result.set_filesize(fileSize);
-        result.set_filename(fileName);
-        result.set_digest(digest);
+        result.set_fileid(ans.get<int32_t>("fileID"));
+        result.set_filesize(ans.get<sqlite_api::sqlite3_int64>("fileSize"));
+        result.set_filename(ans.get<std::string>("fileName"));
+        result.set_digest( ans.get<std::string>("digest"));
 
     } catch (const soci::soci_error& e) {
         std::cerr << "SOCI error: " << e.what() << std::endl;

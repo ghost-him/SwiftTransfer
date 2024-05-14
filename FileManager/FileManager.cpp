@@ -108,7 +108,7 @@ uint64_t FileManager::getFileSize(uint32_t transferID) {
     return ptr->getFileSize();
 }
 
-void FileManager::createFileDigestList(uint32_t fileID, uint32_t blockNumber) {
+void FileManager::createFileDigestList(uint32_t transferID, uint32_t blockNumber) {
     std::shared_ptr<FileDigestStruct> ptr = std::make_shared<FileDigestStruct>();
     ptr->partSha256.resize(blockNumber);
     ptr->targetBlockIndex = 0;
@@ -116,14 +116,14 @@ void FileManager::createFileDigestList(uint32_t fileID, uint32_t blockNumber) {
     ptr->cv = std::make_shared<std::condition_variable>();
     ptr->computeFileLock.lock();
 
-    fileDigestMap[fileID] = ptr;
+    fileDigestMap[transferID] = ptr;
     CipherUtils& cipherUtils = CipherUtils::getInstance();
-    cipherUtils.createFileSha256(fileID);
+    cipherUtils.createFileSha256(transferID);
 
 }
 
-void FileManager::updateFileDigestList(uint32_t fileID, uint32_t blockIndex, std::shared_ptr<unsigned char[]> data, uint64_t dataSize) {
-    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[fileID];
+void FileManager::updateFileDigestList(uint32_t transferID, uint32_t blockIndex, std::shared_ptr<unsigned char[]> data, uint64_t dataSize) {
+    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[transferID];
     CipherUtils& cipherUtils = CipherUtils::getInstance();
     // 更新部分的sha值
     std::string sha256 = cipherUtils.getStringSha256((void *)data.get(), dataSize);
@@ -135,12 +135,12 @@ void FileManager::updateFileDigestList(uint32_t fileID, uint32_t blockIndex, std
     ptr->cv->notify_one();
 }
 
-std::vector<uint32_t> FileManager::isFileComplete(uint32_t fileID, const Transfer::FileDigest &fileDigest) {
-    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[fileID];
+std::vector<uint32_t> FileManager::isFileComplete(uint32_t transferID, const Transfer::FileDigest &fileDigest) {
+    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[transferID];
     std::unique_lock<std::mutex> wait_for_compute(ptr->computeFileLock);
     CipherUtils& cipherUtils = CipherUtils::getInstance();
     std::vector<uint32_t> result;
-    std::string fileSha256 = cipherUtils.getFileSha256(fileID);
+    std::string fileSha256 = cipherUtils.getFileSha256(transferID);
     if (fileSha256 == fileDigest.digest()) {
         return result;
     }
@@ -154,12 +154,12 @@ std::vector<uint32_t> FileManager::isFileComplete(uint32_t fileID, const Transfe
     return result;
 }
 
-void FileManager::deleteFileDigestList(uint32_t fileID) {
+void FileManager::deleteFileDigestList(uint32_t transferID) {
     CipherUtils& cipherUtils = CipherUtils::getInstance();
-    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[fileID];
+    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[transferID];
     std::unique_lock<std::mutex> guard(ptr->lock);
-    cipherUtils.deleteFileSha256(fileID);
-    fileDigestMap.erase(fileID);
+    cipherUtils.deleteFileSha256(transferID);
+    fileDigestMap.erase(transferID);
 }
 
 
@@ -173,15 +173,15 @@ bool FileManager::isValid(const std::filesystem::path &path) {
     return true;
 }
 
-Transfer::FileDigest FileManager::getFileDigest(uint32_t fileID) {
+Transfer::FileDigest FileManager::getFileDigest(uint32_t transferID) {
     CipherUtils& cipherUtils = CipherUtils::getInstance();
 
-    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[fileID];
+    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[transferID];
 
     Transfer::FileDigest fileDigest;
-    fileDigest.set_fileid(fileID);
+    fileDigest.set_fileid(transferID);
     std::unique_lock<std::mutex> wait_for_compute(ptr->computeFileLock);
-    fileDigest.set_digest(cipherUtils.getFileSha256(fileID));
+    fileDigest.set_digest(cipherUtils.getFileSha256(transferID));
 
     std::unique_lock<std::mutex> guard(ptr->lock);
     for (auto& i : ptr->partSha256) {
@@ -190,8 +190,8 @@ Transfer::FileDigest FileManager::getFileDigest(uint32_t fileID) {
     return std::move(fileDigest);
 }
 
-void FileManager::updateFileDigestThread(uint32_t fileID) {
-    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[fileID];
+void FileManager::updateFileDigestThread(uint32_t transferID) {
+    std::shared_ptr<FileDigestStruct> ptr = fileDigestMap[transferID];
 
     while(!stop && ptr->targetBlockIndex != ptr->totalBlockNumber) {
         // blockIdx, data, dataSize
@@ -213,7 +213,7 @@ void FileManager::updateFileDigestThread(uint32_t fileID) {
         }
         CipherUtils& cipherUtils = CipherUtils::getInstance();
         std::cerr << std::get<0>(fileBlock) << " " << std::get<2>(fileBlock) << std::endl;
-        cipherUtils.updateFileSha256(fileID, (void *)std::get<1>(fileBlock).get(), std::get<2>(fileBlock));
+        cipherUtils.updateFileSha256(transferID, (void *)std::get<1>(fileBlock).get(), std::get<2>(fileBlock));
         ptr->targetBlockIndex ++;
     }
     ptr->computeFileLock.unlock();

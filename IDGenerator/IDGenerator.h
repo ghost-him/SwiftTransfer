@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <stdint.h>
+#include <chrono>
 
 class IDGenerator {
 public:
@@ -22,8 +23,8 @@ public:
     uint32_t getUniqueID();
 
 private:
-    IDGenerator() = default;
-    std::atomic<uint32_t> _id = 1;
+    IDGenerator();
+    std::atomic<uint32_t> _id;
 };
 
 

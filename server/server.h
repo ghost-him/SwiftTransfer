@@ -7,6 +7,10 @@
 
 
 #include "../grpc/service.grpc.pb.h"
+#include <queue>
+
+#define Default_Send_Thread 3
+
 
 using namespace grpc;
 using namespace Transfer;
@@ -20,13 +24,28 @@ public:
 
     Status sendUploadFileInfo(ServerContext* context, const StartTransfer* startTransfer, Placeholder* placeholder) override ;
     Status sendUploadFileBlock(ServerContext* context, ServerReader<FileBlock>* reader, Placeholder* placeholder) override ;
-    Status sendFileVerification(ServerContext* context, const FileDigest* fileDigest, RequestFileBlockList* requestFileBlockList) override ;
+    Status transferUploadFileSHA(ServerContext* context, const FileDigest* fileDigest, RequestFileBlockList* requestFileBlockList) override ;
     Status endSendUploadFile(ServerContext* context, const TransferID* transferId, Placeholder* placeholder) override ;
+
+    Status getDownloadTransferID(ServerContext* context, const FileID* fileID, TransferID* writer) override;
+    Status transferDownloadFile(ServerContext* context, const TransferID* transferID, ServerWriter<FileBlock>* writer) override;
+    Status transferDownloadFileSHA(ServerContext* context, const FileDigest* fileDigest, ServerWriter<FileBlock>* writer) override;
+    Status endDownloadFile(ServerContext* context, const TransferID* transferID, Placeholder* writer) override;
+
+
 
     void initFileDirectory();
 
 private:
+    struct SendFileList {
+        std::queue<uint32_t> FileBlockToSend;
+        std::mutex lock;
+    };
     const std::string fileDirectoryPath = "./files/";
+
+    uint32_t getNextBlockIndex(std::shared_ptr<SendFileList> ptr);
+
+    std::unordered_map<uint32_t, std::shared_ptr<SendFileList>> sendFileListMap;
 
 };
 
