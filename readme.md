@@ -26,6 +26,10 @@
 * [protobuf](https://github.com/protocolbuffers/protobuf#protobuf-compiler-installation)
 * [grpc](https://grpc.io/docs/languages/cpp/quickstart/)
 
+### 编译
+
+
+
 ## 使用方法
 
 ### 服务器
@@ -36,49 +40,28 @@
 
 运行可执行文件后，要手动输入服务端所监听的地址与端口，之后即可完成初始化。
 
-# ===========以下过期，待更新========
-
+客户端会读取服务端中存在的文件，然后显示出来。
 
 ## 数据库设计
 
 文件在服务端存储时，将文件id作为本地的名字；客户端在本地存储时，才存放原本的名字。
 
-（客户端管理实现）该表用于管理当前的在线用户
 
-```
-int32 clientID	// 客户端id
-int64 updateTime	// 上次心跳检测的时间
-```
-
-（客户端管理实现）该表用于管理一个用户正在进行的传输
 
 ```sqlite
-int32 clientID
-int32 transferID
+CREATE TABLE FileInfo (
+    fileID INTEGER PRIMARY KEY,
+    fileSize BIGINT,
+    fileName TEXT,
+    digest TEXT
+);
+
+(CREATE TABLE TransferInfo (
+    transferID INTEGER PRIMARY KEY,
+    fileID INTEGER,
+    fileSize BIGINT,
+    fileName TEXT,
+    digest TEXT
+);
 ```
-
-该表用于管理当前正在传输的文件
-
-```sqlite
-int32 transferID
-int32 fileID
-int64 fileSize
-string fileName
-string digest
-int64 startTransferTime
-```
-
-该表用于管理已经存储下来的文件（服务端用）
-
-```sqlite3
-int32 fileID
-int64 fileSize
-string fileName
-string digest
-int64 uploadTime
-```
-
-
-
-
 
