@@ -15,6 +15,7 @@ using namespace grpc;
 using namespace Transfer;
 
 #define Default_Send_Thread 5
+#define Screen_Refresh_Per_Sec 5;
 
 class StreamServiceClient {
 public:
@@ -35,8 +36,6 @@ public:
     FileList getFileList(uint32_t page);
     // 获取全局唯一id
     uint32_t getUniqueID();
-    // 发出心跳信号
-    void HeartbeatSignal();
 
     /*
      * 上传文件相关
@@ -50,9 +49,12 @@ public:
 
     void initFileDirectory();
 
+    void refreshScreen(uint32_t transferID);
+
+
 private:
     const std::string fileDirectoryPath = "./files/";
-    StreamServiceClient() = default;
+    StreamServiceClient();
     struct SendFileList {
         std::queue<uint32_t> FileBlockToSend;
         std::mutex lock;
@@ -86,11 +88,27 @@ private:
     //  发送文件校验
     int transferDownloadFileSHA(uint32_t transferID);
 
+    /*
+     * 传输显示相关
+     */
+    struct FileViewInfo {
+        std::chrono::steady_clock::time_point lastPrintTime =  std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
+        std::atomic<uint32_t> sendBlockNumber;
+        std::mutex lock;
+    };
+
+    // 用于辅助计算传输的速度
+    std::unordered_map<uint32_t, std::shared_ptr<FileViewInfo>> viewMap;
+
+
     std::shared_ptr<grpc::Channel> channel_;
     std::unique_ptr<StreamService::Stub> stub_;
 
     std::unordered_map<uint32_t, std::shared_ptr<SendFileList>> sendFileListMap;
 
+    // first: 数值,second: 1:B, 2: KB 3: MB 4: GB
+    std::pair<double, std::wstring> unitConvert(double number);
 };
 
 

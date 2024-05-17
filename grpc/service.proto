@@ -11,8 +11,6 @@ service StreamService {
     rpc getFileList(PageIndex) returns (FileList) {}
     // 获得一个唯一id
     rpc getUniqueID(Placeholder) returns (UniqueID) {}
-    // 心跳检测
-    rpc HeartbeatSignal(Placeholder) returns (Placeholder) {}
 
     /*上传文件相关*/
 

@@ -20,7 +20,6 @@ public:
     Status getConfiguration(ServerContext* context, const Placeholder* placeholder, Configuration* writer) override ;
     Status getFileList(ServerContext* context, const PageIndex* pageIndex, FileList* writer) override ;
     Status getUniqueID(ServerContext* context, const Placeholder* placeholder, UniqueID* writer) override ;
-    Status HeartbeatSignal(ServerContext* context, const Placeholder* placeholder, Placeholder* writer) override ;
 
     Status sendUploadFileInfo(ServerContext* context, const StartTransfer* startTransfer, Placeholder* placeholder) override ;
     Status sendUploadFileBlock(ServerContext* context, ServerReader<FileBlock>* reader, Placeholder* placeholder) override ;

@@ -7,7 +7,6 @@
 #include "../AppConfig/AppConfig.h"
 #include "../IDGenerator/IDGenerator.h"
 #include "../database/database.h"
-#include "../ClientManager/ClientManager.h"
 #include "../FileManager/FileManager.h"
 #include "../ThreadPool/threadpool.h"
 
@@ -22,7 +21,6 @@ StreamServiceImpl::getConfiguration(ServerContext *context, const Placeholder *p
     writer->set_clientid(clientID);
     writer->set_fileblocksize(fileBlockSize);
 
-    ClientManager::getInstance().addClient(clientID);
     return Status::OK ;
 }
 
@@ -41,13 +39,6 @@ Status StreamServiceImpl::getUniqueID(ServerContext *context, const Placeholder 
     return Status::OK;
 }
 
-Status StreamServiceImpl::HeartbeatSignal(ServerContext *context, const Placeholder *placeholder, Placeholder *writer) {
-    std::string clientIDStr = context->client_metadata().find("clientID")->second.data();
-    uint32_t clientID = std::stoi(clientIDStr);
-    ClientManager::getInstance().processHeartbeat(clientID);
-    return Status::OK;
-}
-
 Status StreamServiceImpl::sendUploadFileInfo(ServerContext *context, const StartTransfer *startTransfer,
                                              Placeholder *placeholder) {
     database& db = database::getInstance();
@@ -62,6 +53,9 @@ Status StreamServiceImpl::sendUploadFileInfo(ServerContext *context, const Start
     // 文件摘要管理初始化
     fileManager.createFileDigestList(startTransfer->transferid(), blockNumber);
     ThreadPool::getInstance().commit(std::bind_front(&FileManager::updateFileDigestThread, &FileManager::getInstance()), startTransfer->transferid());
+    // 初始化客户端管理器
+
+
     return Status::OK;
 }
 

@@ -41,3 +41,7 @@ void ThreadPool::stop()
         }
     }
 }
+
+bool ThreadPool::isStop() {
+    return stop_;
+}

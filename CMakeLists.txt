@@ -17,7 +17,6 @@ aux_source_directory(FileManager SRC)
 aux_source_directory(FileManager/fstreamPool SRC)
 aux_source_directory(AppConfig SRC)
 aux_source_directory(database SRC)
-aux_source_directory(ClientManager SRC)
 aux_source_directory(ThreadPool SRC)
 aux_source_directory(CipherUtils SRC)
 

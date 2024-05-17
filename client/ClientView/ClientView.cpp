@@ -28,7 +28,6 @@ bool ClientView::printMainPage(uint32_t pageIndex) {
               << std::endl;
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> converter;
     Transfer::FileList fileList = std::move(StreamServiceClient::getInstance().getFileList(pageIndex));
-    std::wcout << fileList.fileinfos().size() << std::endl;
     fileManager.updateFileList(fileList);
     auto& fileInfos = fileList.fileinfos();
     for (int i = 0; i < 9; i ++) {

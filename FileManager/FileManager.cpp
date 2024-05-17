@@ -59,7 +59,6 @@ void FileManager::startWriteFile(const std::filesystem::path &path, uint32_t tra
     if (!ptr->is_open()) {
         throw std::runtime_error("open path failed:" + path.string());
     }
-    std::cerr << "insert: " << transferID << std::endl;
     ofstreamMap[transferID] = ptr;
 }
 
@@ -93,7 +92,6 @@ void FileManager::writeThread() {
         Transfer::FileBlock fileBlock = std::move(writeQueue.front());
         writeQueue.pop();
         lock.unlock();
-        std::cerr << "fileSize: " << fileBlock.filesize() << " transferID :" << fileBlock.transferid() << std::endl;
         std::shared_ptr<ofstreamPool> ptr = ofstreamMap[fileBlock.transferid()];
         ptr->write(fileBlock.offset(), fileBlock.filesize(), (void*)fileBlock.fileblock().data());
     }
@@ -212,7 +210,6 @@ void FileManager::updateFileDigestThread(uint32_t transferID) {
             ptr->blockStore.erase(ptr->blockStore.begin());
         }
         CipherUtils& cipherUtils = CipherUtils::getInstance();
-        std::cerr << std::get<0>(fileBlock) << " " << std::get<2>(fileBlock) << std::endl;
         cipherUtils.updateFileSha256(transferID, (void *)std::get<1>(fileBlock).get(), std::get<2>(fileBlock));
         ptr->targetBlockIndex ++;
     }

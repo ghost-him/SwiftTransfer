@@ -9,6 +9,7 @@
 using namespace grpc;
 
 int main() {
+
     ThreadPool& threadPool = ThreadPool::getInstance();
     AppConfig& config = AppConfig::getInstance();
     FileManager& fileManager = FileManager::getInstance();
@@ -17,7 +18,7 @@ int main() {
     service.initFileDirectory();
 
     database::getInstance().init();
-
+    // 初始化文件管理器
     threadPool.commit([&](){
         fileManager.writeThread();
     });
@@ -27,9 +28,8 @@ int main() {
 
     std::string server_address("127.0.0.1:12345");
 
-
-
     ServerBuilder builder;
+
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(reinterpret_cast<Service *>(&service));
     std::unique_ptr<Server> server(builder.BuildAndStart());

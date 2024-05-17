@@ -40,6 +40,8 @@ public:
 
     void stop();
 
+    bool isStop();
+
     ~ThreadPool() {
         if (!stop_) {
             stop();

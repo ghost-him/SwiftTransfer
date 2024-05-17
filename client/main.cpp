@@ -13,7 +13,7 @@ int main() {
     /////////////
     client.initFileDirectory();
     database::getInstance().init();
-
+    // 初始化文件管理器
     threadPool.commit([&](){
         fileManager.writeThread();
     });
